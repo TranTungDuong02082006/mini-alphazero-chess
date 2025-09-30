@@ -6,13 +6,8 @@ from typing import Optional, Dict, List, Tuple
 # State encoder
 # ======================
 def board_to_tensor(board: chess.Board, board_size: int = 8):
-    """
-    Convert chess.Board thành tensor (18, 8, 8).
-    12 kênh cho quân, 1 kênh side-to-move, 5 kênh đặc trưng khác.
-    """
     planes = np.zeros((18, board_size, board_size), dtype=np.float32)
 
-    # --- 12 kênh cho quân ---
     piece_to_plane = {
         chess.PAWN: 0,
         chess.KNIGHT: 1,
@@ -32,7 +27,7 @@ def board_to_tensor(board: chess.Board, board_size: int = 8):
     # --- side-to-move ---
     planes[12, :, :] = 1.0 if board.turn == chess.WHITE else -1.0
 
-    # --- quyền nhập thành ---
+    # --- castling rights ---
     if board.has_kingside_castling_rights(chess.WHITE):
         planes[13, :, :] = 1.0
     if board.has_queenside_castling_rights(chess.WHITE):

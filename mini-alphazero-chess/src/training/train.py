@@ -10,12 +10,12 @@ from src.utils.replay_buffer import ReplayBuffer
 
 
 # -------------------------------
-# Dataset wrapper cho replay buffer
+# Dataset wrapper for replay buffer
 # -------------------------------
 class ChessDataset(Dataset):
     def __init__(self, buffer: ReplayBuffer):
         self.buffer = buffer
-        self.data = buffer.sample(len(buffer))  # lấy toàn bộ dữ liệu trong buffer
+        self.data = buffer.sample(len(buffer))
 
     def __len__(self):
         return len(self.data)
@@ -46,7 +46,7 @@ def train(
     dataset = ChessDataset(buffer)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
-    # Khởi tạo model + optimizer
+    # model + optimizer
     model = ChessNet().to(device)
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
@@ -68,13 +68,13 @@ def train(
             # Forward
             policy_logits, values = model(states)
 
-            # Policy loss (cross entropy giữa logits và target_probs)
+            # Policy loss
             policy_loss = -(target_policies * torch.log_softmax(policy_logits, dim=1)).sum(dim=1).mean()
 
             # Value loss (MSE)
             value_loss = mse_loss(values.squeeze(), target_values)
 
-            # Tổng loss
+            # Total loss
             loss = policy_loss + value_loss
 
             # Backpropagation
@@ -86,7 +86,6 @@ def train(
         avg_loss = total_loss / len(dataloader)
         print(f"[Epoch {epoch+1}/{epochs}] Loss = {avg_loss:.4f}")
 
-    # Lưu model sau khi train
     torch.save(model.state_dict(), model_path)
     print(f"[Train] Saved trained model to {model_path}")
 

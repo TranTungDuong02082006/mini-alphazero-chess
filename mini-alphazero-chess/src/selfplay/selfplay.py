@@ -134,11 +134,9 @@ class SelfPlay:
 
 
 if __name__ == "__main__":
-    # Test nhanh file này
     from src.network.model import NeuralNet, ChessNet
     from src.mcts.mcts_action_indexer import UCIActionIndexer
 
-    # Init mạng + MCTS
     net = NeuralNet()
     indexer = UCIActionIndexer()
     mcts = MCTS(network=net, action_indexer=indexer, num_simulations=100)
