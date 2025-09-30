@@ -86,6 +86,7 @@ def train(
         avg_loss = total_loss / len(dataloader)
         print(f"[Epoch {epoch+1}/{epochs}] Loss = {avg_loss:.4f}")
 
+    os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
     print(f"[Train] Saved trained model to {model_path}")
 
