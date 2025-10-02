@@ -1,4 +1,5 @@
 import numpy as np
+import os
 from typing import List, Tuple
 
 from src.game.chess_game import ChessGame
@@ -40,20 +41,23 @@ class SelfPlay:
             state_enc = game.encode_state()
 
             probs, info = self.mcts.run(game, temperature=1.0, add_noise=True)
-
+            
             # Defensive sanity checks
             probs = np.asarray(probs, dtype=np.float64)
+           
             action_space_size = len(self.action_indexer.all_actions)
             if probs.shape[0] != action_space_size:
                 raise RuntimeError(f"probs length {probs.shape[0]} != action_space_size {action_space_size}")
 
             # compute legal mask and enforce legality on probs
             legal_moves = game.get_legal_moves()
+            
             if len(legal_moves) == 0:
                 break
             root_legal_mask = self.action_indexer.legal_mask_from_moves(legal_moves)
+            
             probs = np.where(root_legal_mask, probs, 0.0)
-
+            
             # fallback to visit_counts if probs invalid
             if (not np.all(np.isfinite(probs))) or (probs.sum() <= 0.0):
                 visit_counts = info.get("visit_counts", None)
@@ -81,6 +85,8 @@ class SelfPlay:
             # sample legal action
             action_idx = int(np.random.choice(action_space_size, p=probs))
 
+            
+
             # map idx -> action (UCI string or chess.Move)
             action_raw = self.action_indexer.idx_to_action(action_idx)
             import chess
@@ -107,11 +113,11 @@ class SelfPlay:
 
             game.play_move(action)
             move_count += 1
-
         # backfill values
         if game.is_game_over():
             result = game.get_result()
             if result is None:
+                print("Game over but result is None, treating as draw.")
                 result = 0
         else:
             result = 0
@@ -125,12 +131,17 @@ class SelfPlay:
     def generate(self):
         for g in range(self.num_games):
             data = self.play_game()
+            print(f"[SelfPlay] Game {g+1}/{self.num_games} generated, {len(data)} moves.")
+            with os.makedirs("data", exist_ok=True):
+                np.savez_compressed(f"data/selfplay_game_{g+1}.npz",
+                                    states=np.array([d[0] for d in data]),
+                                    policies=np.array([d[1] for d in data]),
+                                    values=np.array([d[2] for d in data]))
             for s, p, v in data:
                 self.buffer.add(s, p, v)
             print(f"[SelfPlay] Game {g+1}/{self.num_games} finished, {len(data)} moves added.")
-
             self.buffer.save("replay_buffer.pkl.gz")
-            print(f"[SelfPlay] Buffer saved after game {g + 1}")
+            print(f"[SelfPlay] Buffer saved after game {g + 1}, size={len(self.buffer)}")
 
 
 if __name__ == "__main__":
@@ -145,7 +156,7 @@ if __name__ == "__main__":
     buffer = ReplayBuffer(max_size=50000)
 
     # Self-play
-    sp = SelfPlay(mcts, buffer, num_games=1)
+    sp = SelfPlay(mcts, buffer, num_games=1, action_indexer=indexer)
     sp.generate()
 
     print(f"Replay buffer size: {len(buffer.buffer)}")

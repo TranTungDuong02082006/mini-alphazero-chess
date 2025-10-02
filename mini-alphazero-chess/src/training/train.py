@@ -32,9 +32,9 @@ class ChessDataset(Dataset):
 # Training Loop
 # -------------------------------
 def train(
-    replay_buffer_path="replay_buffer.pkl",
+    replay_buffer_path="replay_buffer.pkl.gz",
     model_path="chess_model.pth",
-    epochs=10,
+    epochs=15,
     batch_size=64,
     lr=1e-3,
 ):
@@ -43,6 +43,7 @@ def train(
 
     # Load replay buffer
     buffer = ReplayBuffer.load(replay_buffer_path)
+    print("[Train] Loaded replay buffer, size =", len(buffer))
     dataset = ChessDataset(buffer)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 

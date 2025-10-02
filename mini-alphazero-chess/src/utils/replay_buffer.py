@@ -202,7 +202,7 @@ class ReplayBuffer:
                 s0, p0, _ = buffer.buffer[0]
                 buffer._state_shape = np.asarray(s0).shape
                 buffer._policy_shape = np.asarray(p0).shape
-
+        
         return buffer
 
     def info(self) -> dict:

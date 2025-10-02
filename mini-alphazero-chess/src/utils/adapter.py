@@ -70,255 +70,115 @@ KNIGHT_DIRS = [15, 17, -15, -17, 10, -10, 6, -6]
 # -----------------------
 # Global action maps
 # -----------------------
-ALL_ACTION_SLOTS: List[Tuple[int, int]] = []  # list of (from_sq, move_type)
-MOVE_TO_IDX: Dict[str, int] = {}
-IDX_TO_MOVE: Dict[int, Optional[chess.Move]] = {}
+# =================================================================
+# Global action maps to be populated
+# =================================================================
 
-# We'll fill these in _build_action_space()
-def _build_action_space():
+# ALL_ACTION_SLOTS: A list of 4672 slots, where each slot contains a
+# chess.Move object or None if the move is geometrically impossible (e.g., wraps around the board).
+ALL_ACTION_SLOTS: List[Optional[chess.Move]] = [None] * 4672
+
+# MOVE_TO_IDX: A dictionary mapping a move's UCI string representation to its unique index (0-4671).
+MOVE_TO_IDX: Dict[str, int] = {}
+
+# IDX_TO_MOVE: A dictionary mapping an index back to its corresponding chess.Move object.
+IDX_TO_MOVE: Dict[int, Optional[chess.Move]] = {}
+ACTION_SPACE_SIZE: int = 0  # to be set after building maps
+
+def build_action_maps():
     """
-    Build AlphaZero-style action space: 73 move-types per from-square => 4672 total.
-    Move-types layout (per from-square):
-      - 0..55   : sliding directions (8 dirs x steps 1..7) -> 56
-      - 56..63  : knight moves (8)
-      - 64..72  : pawn moves (9)  <-- we implement canonical 9 pawn-types
+    Populates the global move mapping variables (ALL_ACTION_SLOTS, MOVE_TO_IDX, IDX_TO_MOVE)
+    based on the 64x73 action space used in AlphaZero for chess.
     """
-    ALL_ACTION_SLOTS.clear()
+    global ACTION_SPACE_SIZE
+    # Clear maps to ensure idempotency if called multiple times
+    ALL_ACTION_SLOTS[:] = [None] * 4672
     MOVE_TO_IDX.clear()
     IDX_TO_MOVE.clear()
-    idx = 0
+    
+    # Define move directions from a square's index perspective
+    # N, NE, E, SE, S, SW, W, NW (clockwise)
+    queen_directions = [8, 9, 1, -7, -8, -9, -1, 7]
+    # NNE, ENE, ESE, SSE, SSW, WSW, WNW, NNW (clockwise)
+    knight_directions = [17, 10, -6, -15, -17, -10, 6, 15]
+    # Pawn moves from White's perspective: NW, N, NE
+    underpromotion_directions = [7, 8, 9]
+    underpromotion_pieces = [chess.KNIGHT, chess.BISHOP, chess.ROOK]
 
-    for from_sq in range(64):
-        from_file = file_of(from_sq)
-        from_rank = rank_of(from_sq)
+    action_index = 0
+    for from_sq in chess.SQUARES:
+        from_rank, from_file = chess.square_rank(from_sq), chess.square_file(from_sq)
 
-        # --- sliding moves: 8 directions x steps 1..7  -> 56 slots
-        for d in SLIDING_DIRS:
-            for step in range(1, 8):
-                ALL_ACTION_SLOTS.append((from_sq, ("slide", d, step)))
-                # compute to_sq; we won't create MOVE object yet until mapping phase below
-                idx += 1
+        # 1. Queen-like moves (56 planes)
+        for direction in queen_directions:
+            for distance in range(1, 8):  # 1 to 7 squares
+                to_sq = from_sq + direction * distance
 
-        # --- knight moves: 8 slots
-        for d in KNIGHT_DIRS:
-            ALL_ACTION_SLOTS.append((from_sq, ("knight", d)))
-            idx += 1
+                move = None
+                if 0 <= to_sq < 64:
+                    to_rank, to_file = chess.square_rank(to_sq), chess.square_file(to_sq)
+                    # Check for board wrap-around to ensure valid geometry
+                    is_valid = False
+                    if direction in [8, -8, 1, -1]:  # Rook moves
+                        if from_rank == to_rank or from_file == to_file:
+                            is_valid = True
+                    else:  # Bishop moves
+                        if abs(from_rank - to_rank) == abs(from_file - to_file):
+                            is_valid = True
 
-        # --- pawn move types: 9 slots (we choose deterministic set)
-        # We'll use the following 9 pawn move-types (common AZ-like breakdown):
-        # 0: pawn single push (forward 1)
-        # 1: pawn double push (forward 2)
-        # 2: pawn capture to left (non-promo)
-        # 3: pawn capture to right (non-promo)
-        # 4: pawn single push promotion to QUEEN
-        # 5: pawn single push promotion to ROOK
-        # 6: pawn single push promotion to BISHOP
-        # 7: pawn single push promotion to KNIGHT
-        # 8: pawn capture promotion (we'll treat capture-right promotion and capture-left promotion slots combined by testing both captures)
-        for i in range(9):
-            ALL_ACTION_SLOTS.append((from_sq, ("pawn", i)))
-            idx += 1
+                    if is_valid:
+                        # By convention, pawn moves to the promotion rank become Queen promotions
+                        is_pawn_move = from_file == to_file
+                        if (from_rank == 6 and to_rank == 7 and is_pawn_move) or \
+                           (from_rank == 1 and to_rank == 0 and is_pawn_move):
+                            move = chess.Move(from_sq, to_sq, promotion=chess.QUEEN)
+                        else:
+                            move = chess.Move(from_sq, to_sq)
+                
+                ALL_ACTION_SLOTS[action_index] = move
+                action_index += 1
 
-    # sanity
-    total = len(ALL_ACTION_SLOTS)
-    assert total == 64 * 73, f"Action slots count mismatch: {total} != 4672"
+        # 2. Knight moves (8 planes)
+        for direction in knight_directions:
+            to_sq = from_sq + direction
+            
+            move = None
+            if 0 <= to_sq < 64:
+                to_rank, to_file = chess.square_rank(to_sq), chess.square_file(to_sq)
+                # Check for valid knight move shape
+                if abs(from_rank - to_rank) * abs(from_file - to_file) == 2:
+                    move = chess.Move(from_sq, to_sq)
 
-    # Now build IDX_TO_MOVE and MOVE_TO_IDX for the slots that correspond to actual legal UCI strings.
-    # For each slot, compute the canonical target (if any). If invalid, set None.
-    idx = 0
-    for (from_sq, spec) in ALL_ACTION_SLOTS:
-        slot_move = None
-        kind = spec[0]
-        if kind == "slide":
-            d = spec[1]; step = spec[2]
-            to_sq = from_sq + d * step
-            # Must ensure step-by-step file/rank don't wrap: check intermediate
-            valid = True
-            prev = from_sq
-            for _s in range(step):
-                prev = prev + d
-                if not on_board(prev):
-                    valid = False
-                    break
-                # also ensure file wrap not occur for horizontal/diagonal steps:
-                # If movement changes file by more than 1 per step it's invalid — but simpler check:
-                # check that the absolute file diff between intermediate and from is <= step
-            if valid and on_board(to_sq):
-                # create move (no promotion here)
-                slot_move = chess.Move(from_sq, to_sq)
-                u = slot_move.uci()
-                IDX_TO_MOVE[idx] = slot_move
-                MOVE_TO_IDX[u] = idx
-            else:
-                IDX_TO_MOVE[idx] = None
+            ALL_ACTION_SLOTS[action_index] = move
+            action_index += 1
 
-        elif kind == "knight":
-            d = spec[1]
-            to_sq = from_sq + d
-            if on_board(to_sq) and abs(file_of(to_sq) - file_of(from_sq)) <= 2:
-                slot_move = chess.Move(from_sq, to_sq)
-                u = slot_move.uci()
-                IDX_TO_MOVE[idx] = slot_move
-                MOVE_TO_IDX[u] = idx
-            else:
-                IDX_TO_MOVE[idx] = None
+        # 3. Underpromotion moves (9 planes)
+        for direction in underpromotion_directions:
+            for piece in underpromotion_pieces:
+                to_sq = from_sq + direction
+                
+                move = None
+                if 0 <= to_sq < 64:
+                    to_rank, to_file = chess.square_rank(to_sq), chess.square_file(to_sq)
+                    # Must be a one-rank advance
+                    if abs(from_rank - to_rank) == 1:
+                        # Check forward vs. diagonal capture geometry
+                        if (direction == 8 and from_file == to_file) or \
+                           (direction in [7, 9] and abs(from_file - to_file) == 1):
+                            move = chess.Move(from_sq, to_sq, promotion=piece)
 
-        elif kind == "pawn":
-            ptype = spec[1]
-            # handle from white perspective and black via the fact from_rank determines color of pawn's forward direction
-            # We will generate both white and black canonical moves depending on from_rank:
-            # White pawns move "north" (+8), black pawns move "south" (-8)
-            # We produce a move only if the resulting to-square on board is valid; promotions handled by separate kinds.
-            if from_rank in range(0, 8):  # always true; use from_rank to decide color
-                # Determine forward direction based on potential pawn color:
-                # Heuristic: if from_rank <= 1 => likely black pawn starting rank; if from_rank >=6 => white pawn promotion
-                # We'll try both: create move only if it makes chess sense (non-wrapping).
-                # Simpler deterministic rule: create both white-like and black-like candidates where possible.
-                # For ptype meanings:
-                # 0: forward1 (non-promo)
-                # 1: forward2 (non-promo)
-                # 2: capture left (non-promo)
-                # 3: capture right (non-promo)
-                # 4..7: forward1 promotions (Q,R,B,N)
-                # 8: capture promotion (we will try left then right promotions and pick the first valid one)
-                created = False
+                ALL_ACTION_SLOTS[action_index] = move
+                action_index += 1
+    
+    # Populate the reverse lookup dictionaries from the generated list
+    for idx, move in enumerate(ALL_ACTION_SLOTS):
+        if move:
+            IDX_TO_MOVE[idx] = move
+            MOVE_TO_IDX[move.uci()] = idx
 
-                # WHITE-like moves
-                # white forward
-                to_forward1 = from_sq + 8
-                to_forward2 = from_sq + 16
-                to_cap_left = from_sq + 7
-                to_cap_right = from_sq + 9
-
-                # BLACK-like moves
-                to_b_forward1 = from_sq - 8
-                to_b_forward2 = from_sq - 16
-                to_b_cap_left = from_sq - 9
-                to_b_cap_right = from_sq - 7
-
-                # ptype mapping (try white variant first, then black)
-                if ptype == 0:
-                    # single push non-promo (either white or black)
-                    if on_board(to_forward1):
-                        m = chess.Move(from_sq, to_forward1)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    elif on_board(to_b_forward1):
-                        m = chess.Move(from_sq, to_b_forward1)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    else:
-                        IDX_TO_MOVE[idx] = None
-
-                elif ptype == 1:
-                    # double push (two squares forward) - only valid from starting rank typically
-                    if on_board(to_forward2):
-                        m = chess.Move(from_sq, to_forward2)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    elif on_board(to_b_forward2):
-                        m = chess.Move(from_sq, to_b_forward2)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    else:
-                        IDX_TO_MOVE[idx] = None
-
-                elif ptype == 2:
-                    # capture left
-                    if on_board(to_cap_left) and abs(file_of(to_cap_left) - file_of(from_sq)) == 1:
-                        m = chess.Move(from_sq, to_cap_left)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    elif on_board(to_b_cap_left) and abs(file_of(to_b_cap_left) - file_of(from_sq)) == 1:
-                        m = chess.Move(from_sq, to_b_cap_left)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    else:
-                        IDX_TO_MOVE[idx] = None
-
-                elif ptype == 3:
-                    # capture right
-                    if on_board(to_cap_right) and abs(file_of(to_cap_right) - file_of(from_sq)) == 1:
-                        m = chess.Move(from_sq, to_cap_right)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    elif on_board(to_b_cap_right) and abs(file_of(to_b_cap_right) - file_of(from_sq)) == 1:
-                        m = chess.Move(from_sq, to_b_cap_right)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    else:
-                        IDX_TO_MOVE[idx] = None
-
-                elif 4 <= ptype <= 7:
-                    # promotions on forward1 to Q/R/B/N
-                    promo_map = {4: chess.QUEEN, 5: chess.ROOK, 6: chess.BISHOP, 7: chess.KNIGHT}
-                    promo_piece = promo_map[ptype]
-                    if on_board(to_forward1):
-                        m = chess.Move(from_sq, to_forward1, promotion=promo_piece)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    elif on_board(to_b_forward1):
-                        m = chess.Move(from_sq, to_b_forward1, promotion=promo_piece)
-                        IDX_TO_MOVE[idx] = m
-                        MOVE_TO_IDX[m.uci()] = idx
-                        created = True
-                    else:
-                        IDX_TO_MOVE[idx] = None
-
-                elif ptype == 8:
-                    # capture promotion - try left/right both with promotions - we will store only first valid
-                    found = False
-                    for promo in (chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT):
-                        if on_board(to_cap_left) and abs(file_of(to_cap_left) - file_of(from_sq)) == 1:
-                            m = chess.Move(from_sq, to_cap_left, promotion=promo)
-                            IDX_TO_MOVE[idx] = m
-                            MOVE_TO_IDX[m.uci()] = idx
-                            found = True
-                            break
-                        if on_board(to_cap_right) and abs(file_of(to_cap_right) - file_of(from_sq)) == 1:
-                            m = chess.Move(from_sq, to_cap_right, promotion=promo)
-                            IDX_TO_MOVE[idx] = m
-                            MOVE_TO_IDX[m.uci()] = idx
-                            found = True
-                            break
-                    if not found:
-                        IDX_TO_MOVE[idx] = None
-
-                else:
-                    IDX_TO_MOVE[idx] = None
-
-            else:
-                IDX_TO_MOVE[idx] = None
-
-        else:
-            IDX_TO_MOVE[idx] = None
-
-        # ensure key exists
-        if idx not in IDX_TO_MOVE:
-            IDX_TO_MOVE[idx] = None
-        idx += 1
-
-    # final sanity
-    total_idx = len(IDX_TO_MOVE)
-    if total_idx != 64 * 73:
-        raise RuntimeError(f"Bad build: IDX_TO_MOVE size {total_idx} != 4672")
-    # Print summary of how many real moves we registered (i.e. valid UCI -> idx)
-    print(f"[Adapter] Built action-slot table with {total_idx} slots; known UCI mappings: {len(MOVE_TO_IDX)}")
-
-
-# build on import
-_build_action_space()
-ACTION_SPACE_SIZE = 64 * 73  # 4672
-
+    ACTION_SPACE_SIZE = len(ALL_ACTION_SLOTS)
+    print(f"[Adapter] ACTION SPACE SIZE SAVED: {ACTION_SPACE_SIZE}")
+    assert ACTION_SPACE_SIZE == 4672, f"Expected action space size 4672, got {ACTION_SPACE_SIZE}"
 # -----------------------
 # helper converters
 # -----------------------

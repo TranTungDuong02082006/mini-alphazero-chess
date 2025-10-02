@@ -3,13 +3,16 @@ from typing import List, Any
 import chess
 import logging
 
+
 # Try both import styles so file works when run as package or as script
 try:
     # when running as `python -m src...` or tests that add src to path
-    from src.utils.adapter import ALL_ACTION_SLOTS, MOVE_TO_IDX, IDX_TO_MOVE, ACTION_SPACE_SIZE
+    from src.utils.adapter import ALL_ACTION_SLOTS, MOVE_TO_IDX, IDX_TO_MOVE, build_action_maps
+    from src.utils import adapter
 except Exception:
     # fallback when running directly with src on PYTHONPATH (common in dev)
-    from src.utils.adapter import ALL_ACTION_SLOTS, MOVE_TO_IDX, IDX_TO_MOVE, ACTION_SPACE_SIZE
+    from src.utils.adapter import ALL_ACTION_SLOTS, MOVE_TO_IDX, IDX_TO_MOVE, build_action_maps
+    from src.utils import adapter
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +27,9 @@ class UCIActionIndexer:
 
     def __init__(self):
         # Build list of UCI strings from adapter's ALL_MOVES (which may contain chess.Move)
+        print(adapter.ACTION_SPACE_SIZE)
+        build_action_maps()
+        print(adapter.ACTION_SPACE_SIZE)
         actions = []
         for m in ALL_ACTION_SLOTS:
             if isinstance(m, chess.Move):
@@ -33,8 +39,8 @@ class UCIActionIndexer:
                 actions.append(str(m))
 
         # ensure length matches adapter constant if present
-        if 'ACTION_SPACE_SIZE' in globals():
-            expected = ACTION_SPACE_SIZE
+        if hasattr(adapter, 'ACTION_SPACE_SIZE'):
+            expected = adapter.ACTION_SPACE_SIZE
             if len(actions) != expected:
                 logger.warning(
                     "Adapter ACTION_SPACE_SIZE=%s but built %s UCI strings. Adapter content may be inconsistent.",
@@ -81,6 +87,7 @@ class UCIActionIndexer:
             else:
                 u = str(m)
             idx = self.action_to_index.get(u)
+            #print(f"[UCIActionIndexer] legal move {u} -> idx {idx}")
             if idx is not None:
                 mask[idx] = True
         return mask

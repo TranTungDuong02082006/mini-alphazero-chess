@@ -20,7 +20,7 @@ def main():
     parser.add_argument("--games", type=int, default=2)
     parser.add_argument("--sims", type=int, default=100)
     parser.add_argument("--c_puct", type=float, default=1.0)
-    parser.add_argument("--device", type=str, default="cpu")
+    parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--max_moves", type=int, default=800)
     args = parser.parse_args()
 
@@ -65,7 +65,7 @@ def main():
     )
     selfplay.generate()
     buffer.save(args.buffer)
-    print(f"[Main] Saved replay buffer to {args.buffer}")
+    print(f"[Main] Saved replay buffer to {args.buffer} (size={len(buffer)})")
 
     # ------------------------
     # Step 3: Train model

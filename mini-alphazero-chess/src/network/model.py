@@ -339,7 +339,7 @@ class NeuralNet:
         """
         Load a NeuralNet from a checkpoint saved by save().
         """
-        ckpt = torch.load(path, map_location="cpu")
+        ckpt = torch.load(path, map_location="cuda" if device is None else device)
         config = ckpt.get("config", {})
         wrapper = cls(device=device, **config)
         state = ckpt.get("state_dict", ckpt)
