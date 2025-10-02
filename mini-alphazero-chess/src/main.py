@@ -16,12 +16,12 @@ def main():
     parser.add_argument("--buffer", type=str, default="replay_buffer.pkl.gz")
     parser.add_argument("--new", type=str, default="checkpoints/chess_model.pth")
     parser.add_argument("--old", type=str, default="checkpoints/chess_model_old.pth")
-    parser.add_argument("--epochs", type=int, default=1)
-    parser.add_argument("--games", type=int, default=2)
+    parser.add_argument("--epochs", type=int, default=15)
+    parser.add_argument("--games", type=int, default=25)
     parser.add_argument("--sims", type=int, default=100)
     parser.add_argument("--c_puct", type=float, default=1.0)
-    parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--max_moves", type=int, default=800)
+    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
+    parser.add_argument("--max_moves", type=int, default=400)
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
@@ -76,7 +76,7 @@ def main():
         model_path=args.new,
         epochs=args.epochs,
         batch_size=128,
-        lr=1e-3,
+        lr=3e-3,
     )
 
     # ------------------------

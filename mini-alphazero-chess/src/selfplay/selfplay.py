@@ -132,11 +132,6 @@ class SelfPlay:
         for g in range(self.num_games):
             data = self.play_game()
             print(f"[SelfPlay] Game {g+1}/{self.num_games} generated, {len(data)} moves.")
-            with os.makedirs("data", exist_ok=True):
-                np.savez_compressed(f"data/selfplay_game_{g+1}.npz",
-                                    states=np.array([d[0] for d in data]),
-                                    policies=np.array([d[1] for d in data]),
-                                    values=np.array([d[2] for d in data]))
             for s, p, v in data:
                 self.buffer.add(s, p, v)
             print(f"[SelfPlay] Game {g+1}/{self.num_games} finished, {len(data)} moves added.")
