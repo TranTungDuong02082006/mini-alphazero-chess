@@ -4,11 +4,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
 from src.network.model import ChessNet
 from src.utils.replay_buffer import ReplayBuffer
 
-
+writer = SummaryWriter(log_dir="logs")
 # -------------------------------
 # Dataset wrapper for replay buffer
 # -------------------------------
@@ -38,6 +39,9 @@ def train(
     batch_size=64,
     lr=1e-3,
 ):
+    
+
+    # device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"[Train] Using device: {device}")
 
@@ -49,8 +53,8 @@ def train(
 
     # model + optimizer
     model = ChessNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr=lr)
-
+    optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs * len(dataloader))
     # Loss function: policy loss + value loss
     mse_loss = nn.MSELoss()
     ce_loss = nn.CrossEntropyLoss()
@@ -81,15 +85,22 @@ def train(
             # Backpropagation
             loss.backward()
             optimizer.step()
-
+            scheduler.step()
             total_loss += loss.item()
 
+            # Logging
+            writer.add_scalar("Loss/Total", total_loss, epoch)
+            writer.add_scalar("Loss/Policy", policy_loss, epoch)
+            writer.add_scalar("Loss/Value", value_loss, epoch)
+            writer.add_scalar("Stats/PolicyEntropy", entropy, epoch)
+            writer.add_scalar("Stats/ValueMean", value_pred.mean(), epoch)
         avg_loss = total_loss / len(dataloader)
         print(f"[Epoch {epoch+1}/{epochs}] Loss = {avg_loss:.4f}")
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
     print(f"[Train] Saved trained model to {model_path}")
+    writer.close()
 
 
 if __name__ == "__main__":

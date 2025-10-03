@@ -80,8 +80,8 @@ class SelfPlay:
 
         while not game.is_game_over() and move_count < max_moves:
             state_enc = game.encode_state()
-
-            probs, info = self.mcts.run(game, temperature=1.0, add_noise=True)
+            temp = 1.0 if move_count < 30 else 1e-2
+            probs, info = self.mcts.run(game, temperature=temp, add_noise=True)
             
             # Defensive sanity checks
             probs = np.asarray(probs, dtype=np.float64)

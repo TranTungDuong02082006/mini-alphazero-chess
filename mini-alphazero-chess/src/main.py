@@ -126,11 +126,32 @@ def main():
             print("[Main] Buffer is empty, skipping training.")
             continue
 
-
-        # (Optional) Evaluate the new model against the old one
+        # After training, evaluate the new model against the old one
         if os.path.exists(args.old):
             print("[Main] Evaluating new model vs old model...")
-            # ... Your evaluation logic here to decide if the new model is better ...
+            results = evaluate_models(
+                new_model_path=args.new,
+                old_model_path=args.old,
+                num_games=100,
+                sims=args.sims,
+                c_puct=args.c_puct,
+                device=str(device),
+                temperature=1e-3,
+                add_noise_in_selfplay=False,
+                swap_colors=True,
+                max_moves=args.max_moves,
+            )
+            print("[Main] Evaluation results:", results)
+        else:
+            print("[Main] No old model found, skipping evaluation.")
+        # ------------------------
+        # Step 5: Promote
+        # ------------------------
+        if os.path.exists(args.new):
+            os.makedirs(os.path.dirname(args.old), exist_ok=True)
+            model_state = torch.load(args.new, map_location="cpu")
+            torch.save(model_state, args.old)
+            print(f"[Main] Promoted {args.new} to {args.old}")
             
 if __name__ == "__main__":
     main()
