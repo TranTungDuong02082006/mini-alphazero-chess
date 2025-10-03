@@ -34,7 +34,7 @@ def main():
         buffer = ReplayBuffer.load(args.buffer)
         print(f"[Main] Loaded replay buffer from {args.buffer}, size={len(buffer)}")
     else:
-        buffer = ReplayBuffer(max_size=50000)
+        buffer = ReplayBuffer(max_size=1e6)
         print(f"[Main] Initialized empty replay buffer")
 
     # ------------------------
@@ -112,4 +112,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    train_count = 0
+    while True:
+        main()
+        train_count += 1
+        print(f"[Main] Completed training iteration {train_count}")
+        if train_count >= 100:
+            break
+    print("[Main] Training loop finished.")

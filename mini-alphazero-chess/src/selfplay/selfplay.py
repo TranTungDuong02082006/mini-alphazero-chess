@@ -30,7 +30,7 @@ class SelfPlay:
                 "Pass action_indexer=... to SelfPlay(...) or ensure mcts.action_indexer exists."
             )
 
-    def play_game(self, max_moves: int = 800) -> List[Tuple[np.ndarray, np.ndarray, float]]:
+    def play_game(self, max_moves: int = 400) -> List[Tuple[np.ndarray, np.ndarray, float]]:
         game = ChessGame()
         game.reset()
         game_data: List[Tuple[np.ndarray, np.ndarray, float]] = []
