@@ -33,7 +33,7 @@ Sample = Tuple[np.ndarray, np.ndarray, float]  # (state, policy, value)
 
 
 class ReplayBuffer:
-    def __init__(self, max_size: int = 1e6, seed: Optional[int] = None):
+    def __init__(self, max_size: int = 500000, seed: Optional[int] = None):
         self.max_size = int(max_size)
         self.buffer: Deque[Sample] = deque(maxlen=self.max_size)
         self.lock = threading.Lock()
@@ -172,7 +172,7 @@ class ReplayBuffer:
                 pickle.dump(to_save, f, protocol=pickle.HIGHEST_PROTOCOL)
 
     @classmethod
-    def load(cls, path: str, max_size: int = 1e6):
+    def load(cls, path: str, max_size: int = 500000) -> "ReplayBuffer":
         """
         Load buffer from disk, return a ReplayBuffer instance.
         Supports both .pkl and .pkl.gz.

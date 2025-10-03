@@ -34,7 +34,7 @@ def main():
         buffer = ReplayBuffer.load(args.buffer)
         print(f"[Main] Loaded replay buffer from {args.buffer}, size={len(buffer)}")
     else:
-        buffer = ReplayBuffer(max_size=1e6)
+        buffer = ReplayBuffer(max_size=500000)
         print(f"[Main] Initialized empty replay buffer")
 
     # ------------------------
