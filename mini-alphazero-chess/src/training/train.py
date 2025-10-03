@@ -92,8 +92,6 @@ def train(
             writer.add_scalar("Loss/Total", total_loss, epoch)
             writer.add_scalar("Loss/Policy", policy_loss, epoch)
             writer.add_scalar("Loss/Value", value_loss, epoch)
-            writer.add_scalar("Stats/PolicyEntropy", entropy, epoch)
-            writer.add_scalar("Stats/ValueMean", value_pred.mean(), epoch)
         avg_loss = total_loss / len(dataloader)
         print(f"[Epoch {epoch+1}/{epochs}] Loss = {avg_loss:.4f}")
 
@@ -107,7 +105,7 @@ if __name__ == "__main__":
     os.makedirs("checkpoints", exist_ok=True)
     train(
         replay_buffer_path="replay_buffer.pkl.gz",
-        model_path="checkpoints/chess_model.pth",
+        model_path="checkpoints/chess_model_testing.pth",
         epochs=10,
         batch_size=64,
         lr=1e-3,
