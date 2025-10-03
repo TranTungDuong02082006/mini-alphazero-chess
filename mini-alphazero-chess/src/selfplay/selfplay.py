@@ -1,14 +1,56 @@
 import numpy as np
 import os
+import time # Import the time library
 from typing import List, Tuple
+import chess # Move import to the top of the file
 
 from src.game.chess_game import ChessGame
 from src.mcts.mcts import MCTS
 from src.utils.replay_buffer import ReplayBuffer
+from src.network.model import NeuralNet # Add import
+from src.mcts.mcts_action_indexer import UCIActionIndexer # Add import
+def self_play_worker(model_path, data_queue, worker_id, args):
+    """
+    A worker process that continuously plays games and puts the data into a queue.
+    """
+    print(f"[Worker {worker_id}] Started.")
+    
+    # Workers should generally run on CPU to not interfere with the main training GPU
+    # and because the MCTS tree logic is CPU-bound.
+    device = "cpu"
+    # Each worker will load the model on its own
+    model = NeuralNet(model_path=model_path, device=device)
+    action_indexer = UCIActionIndexer()
 
+    mcts = MCTS(
+        network=model,
+        action_indexer=action_indexer,
+        num_simulations=args.sims,
+        c_puct=args.c_puct,
+    )
+
+    # The worker doesn't need a buffer, it just needs the logic to play one game
+    self_player = SelfPlay(mcts=mcts, buffer=None, action_indexer=action_indexer)
+
+    while True:
+        try:
+            # Reload the latest model from the file
+            model.load(model_path)
+        except Exception as e:
+            print(f"[Worker {worker_id}] Could not load model, waiting... Error: {e}")
+            time.sleep(10)
+            continue
+        
+        # Play one game
+        game_data = self_player.play_game(max_moves=args.max_moves)
+        
+        # Put the data into the queue for the main process to handle
+        if game_data:
+            print(f"[Worker {worker_id}] Game finished ({len(game_data)} moves). Sending to main.")
+            data_queue.put(game_data)
 
 class SelfPlay:
-    def __init__(self, mcts: MCTS, buffer: ReplayBuffer, num_games: int = 1, action_indexer=None):
+    def __init__(self, mcts: MCTS, buffer: ReplayBuffer, action_indexer=None):
         """
         SelfPlay wrapper.
 
@@ -16,8 +58,7 @@ class SelfPlay:
         """
         self.mcts = mcts
         self.buffer = buffer
-        self.num_games = int(num_games)
-
+        
         # Prefer explicit action_indexer argument, otherwise try to get from mcts.
         if action_indexer is not None:
             self.action_indexer = action_indexer
@@ -128,15 +169,7 @@ class SelfPlay:
 
         return updated_data
 
-    def generate(self):
-        for g in range(self.num_games):
-            data = self.play_game()
-            print(f"[SelfPlay] Game {g+1}/{self.num_games} generated, {len(data)} moves.")
-            for s, p, v in data:
-                self.buffer.add(s, p, v)
-            print(f"[SelfPlay] Game {g+1}/{self.num_games} finished, {len(data)} moves added.")
-            self.buffer.save("replay_buffer.pkl.gz")
-            print(f"[SelfPlay] Buffer saved after game {g + 1}, size={len(self.buffer)}")
+    
 
 
 if __name__ == "__main__":
