@@ -5,8 +5,8 @@ import argparse
 import torch
 import multiprocessing
 import time
+import shutil
 
-# Import the NEW worker function, not the SelfPlay class
 from src.selfplay.selfplay import self_play_worker 
 from src.utils.replay_buffer import ReplayBuffer
 from src.training.train import train
@@ -15,85 +15,78 @@ from src.network.model import NeuralNet
 
 def main():
     parser = argparse.ArgumentParser()
-    # General file paths
+    # --- Model paths ---
+    parser.add_argument("--model_best", type=str, default="checkpoints/best.pth", help="Path to the best, stable model for workers.")
+    parser.add_argument("--model_candidate", type=str, default="checkpoints/candidate.pth", help="Path for the newly trained model to be evaluated.")
+    
+    # --- Other arguments ---
     parser.add_argument("--buffer", type=str, default="replay_buffer.pkl.gz")
-    parser.add_argument("--new", type=str, default="checkpoints/chess_model.pth")
-    parser.add_argument("--old", type=str, default="checkpoints/chess_model_old.pth")
-
-    # Training loop args
-    parser.add_argument("--num_workers", type=int, default=8, help="Number of self-play workers")
-    parser.add_argument("--train_after_positions", type=int, default=20000, help="Trigger training after N new positions")
+    parser.add_argument("--num_workers", type=int, default=8)
+    parser.add_argument("--train_after_positions", type=int, default=20000)
     parser.add_argument("--epochs", type=int, default=15)
     parser.add_argument("--max_moves", type=int, default=400)
-    
-    # NEW: Replay buffer max_size is now a configurable argument
-    parser.add_argument("--buffer_size", type=int, default=500000, help="Maximum size of the replay buffer")
-
-    # MCTS args
+    parser.add_argument("--buffer_size", type=int, default=500000)
     parser.add_argument("--sims", type=int, default=100)
     parser.add_argument("--c_puct", type=float, default=1.0)
-    
-    # System args
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu")
     
     args = parser.parse_args()
 
-    # It's crucial to set the start method for CUDA safety
     multiprocessing.set_start_method('spawn', force=True)
-
-    device = torch.device(args.device if torch.cuda.is_available() else "cpu")
+    device = torch.device(args.device)
     print(f"[Main] Using device for training: {device}")
 
-    # ------------------------
-    # Step 1: Load or init replay buffer and model
-    # ------------------------
+    # --- Initialization ---
+    
+    # Shared flag to notify workers of a new model version
+    model_version = multiprocessing.Value('i', 0)
+
+    # Ensure the 'best' model exists before starting workers
+    if not os.path.exists(args.model_best):
+        print(f"[Main] No best model found. Initializing a new one at {args.model_best}")
+        initial_model = NeuralNet(device=device)
+        initial_model.save(args.model_best)
+        with model_version.get_lock():
+            model_version.value += 1
+        print(f"[Main] Saved initial model. Version: {model_version.value}")
+    else:
+        # If a model exists, set its version so workers load it
+        with model_version.get_lock():
+            model_version.value = 1 # Or read from a file if you want to persist versions
+    
+    # Load or init replay buffer
+    buffer = ReplayBuffer(max_size=args.buffer_size)
     if os.path.exists(args.buffer):
-        # CHANGE: Pass the configured max_size when loading the buffer
         buffer = ReplayBuffer.load(args.buffer, max_size=args.buffer_size)
         print(f"[Main] Loaded replay buffer from {args.buffer}, size={len(buffer)}")
-    else:
-        # CHANGE: Use the configured max_size for a new buffer
-        buffer = ReplayBuffer(max_size=args.buffer_size) 
-        print(f"[Main] Initialized empty replay buffer with max_size={args.buffer_size}")
 
-    # Ensure the model exists before starting workers
-    if not os.path.exists(args.new):
-        print(f"[Main] No model found at {args.new}. Initializing a new one.")
-        initial_model = NeuralNet(device=device)
-        initial_model.save(args.new)
-        print(f"[Main] Saved new initial model to {args.new}")
-
-    # ------------------------
-    # Step 2: Set up and start Self-play Workers
-    # ------------------------
+    # --- Start Self-play Workers ---
     data_queue = multiprocessing.Queue()
-    
     workers = []
     for i in range(args.num_workers):
         process = multiprocessing.Process(
             target=self_play_worker,
-            args=(args.new, data_queue, i, args) # Note: self_play_worker needs to be updated to accept args
+            # Workers ONLY ever load the 'best' model
+            args=(args.model_best, data_queue, i, args, model_version)
         )
         process.daemon = True
         process.start()
         workers.append(process)
 
-    print(f"[Main] Started {args.num_workers} self-play workers.")
+    print(f"[Main] Started {args.num_workers} workers to generate data using '{args.model_best}'.")
     
-    # ------------------------
-    # Step 3: Main Asynchronous Loop
-    # ------------------------
+    # --- Main Asynchronous Loop ---
     new_positions_counter = 0
     iteration = 0
     while True:
         iteration += 1
         print(f"\n[Main] #################### Starting Iteration {iteration} ####################\n")
 
-        # Collect data until the threshold is reached
+        # 1. Collect data from workers until the threshold is reached
+        # (Workers are continuously playing using the 'best' model in the background)
         while new_positions_counter < args.train_after_positions:
             if not data_queue.empty():
                 game_data = data_queue.get()
-                # CHANGE: Use the .extend() method from your ReplayBuffer class
                 buffer.extend(game_data)
                 new_positions_counter += len(game_data)
                 print(f"[Main] Data received. Buffer: {len(buffer)}. New positions: {new_positions_counter}/{args.train_after_positions}")
@@ -101,57 +94,51 @@ def main():
                 print(f"[Main] Waiting for data... ({new_positions_counter}/{args.train_after_positions})")
                 time.sleep(10)
 
-        # When there is enough data -> Train
+        # 2. Train a new 'candidate' model
         print("[Main] Data threshold reached. Starting training...")
         if len(buffer) > 0:
-            buffer.save(args.buffer) # Save buffer before training
+            buffer.save(args.buffer)
             
-            # Backup the old model for comparison
-            if os.path.exists(args.new):
-                if os.path.exists(args.old):
-                    os.remove(args.old)
-                os.rename(args.new, args.old)
-
+            # The 'train' function will load the 'best' model as a base,
+            # and save the newly trained model as the 'candidate'.
             train(
                 replay_buffer_path=args.buffer,
-                model_path=args.new, 
-                base_model_path=args.old, # Pass the old model path to continue training from it
+                model_path=args.model_candidate, # Output path for the new model
+                base_model_path=args.model_best, # Starting point for training
                 epochs=args.epochs,
                 batch_size=256,
                 lr=1e-4,
-                device=str(device)
             )
-            new_positions_counter = 0 # Reset the counter
+            new_positions_counter = 0
         else:
             print("[Main] Buffer is empty, skipping training.")
             continue
 
-        # After training, evaluate the new model against the old one
-        if os.path.exists(args.old):
-            print("[Main] Evaluating new model vs old model...")
-            results = evaluate_models(
-                new_model_path=args.new,
-                old_model_path=args.old,
-                num_games=100,
-                sims=args.sims,
-                c_puct=args.c_puct,
-                device=str(device),
-                temperature=1e-3,
-                add_noise_in_selfplay=False,
-                swap_colors=True,
-                max_moves=args.max_moves,
-            )
-            print("[Main] Evaluation results:", results)
+        # 3. Evaluate the new 'candidate' model against the 'best' model
+        print("[Main] Evaluating new candidate model vs best model...")
+        results = evaluate_models(
+            new_model_path=args.model_candidate,
+            old_model_path=args.model_best,
+            num_games=20, # More games for a reliable result
+            sims=args.sims,
+            device=str(device),
+        )
+        print("[Main] Evaluation results:", results['summary'])
+        
+        # 4. Conditional Promotion
+        win_rate_threshold = 0.55
+        new_model_win_rate = results['summary']['new_win_rate']
+        
+        if new_model_win_rate > win_rate_threshold:
+            print(f"[Main] PROMOTION! New model won with {new_model_win_rate:.2%} > {win_rate_threshold:.0%}. Promoting candidate to best.")
+            # Copy the successful candidate to become the new best model
+            shutil.copy(args.model_candidate, args.model_best)
+            # Notify workers that a new version of the 'best' model is available
+            with model_version.get_lock():
+                model_version.value += 1
+            print(f"[Main] Model version is now {model_version.value}. Workers will update on their next game.")
         else:
-            print("[Main] No old model found, skipping evaluation.")
-        # ------------------------
-        # Step 5: Promote
-        # ------------------------
-        if os.path.exists(args.new):
-            os.makedirs(os.path.dirname(args.old), exist_ok=True)
-            model_state = torch.load(args.new, map_location="cpu")
-            torch.save(model_state, args.old)
-            print(f"[Main] Promoted {args.new} to {args.old}")
+            print(f"[Main] NO PROMOTION. New model win rate was {new_model_win_rate:.2%}. Keeping the old best model.")
             
 if __name__ == "__main__":
     main()

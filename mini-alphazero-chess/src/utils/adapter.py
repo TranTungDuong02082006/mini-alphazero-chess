@@ -177,7 +177,6 @@ def build_action_maps():
             MOVE_TO_IDX[move.uci()] = idx
 
     ACTION_SPACE_SIZE = len(ALL_ACTION_SLOTS)
-    print(f"[Adapter] ACTION SPACE SIZE SAVED: {ACTION_SPACE_SIZE}")
     assert ACTION_SPACE_SIZE == 4672, f"Expected action space size 4672, got {ACTION_SPACE_SIZE}"
 # -----------------------
 # helper converters

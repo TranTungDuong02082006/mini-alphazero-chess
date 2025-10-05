@@ -3,6 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.tensorboard import SummaryWriter
 
@@ -34,9 +35,10 @@ class ChessDataset(Dataset):
 # -------------------------------
 def train(
     replay_buffer_path="replay_buffer.pkl.gz",
-    model_path="chess_model.pth",
+    model_path="checkpoints/candidate.pth",
+    base_model_path="checkpoints/best.pth",
     epochs=15,
-    batch_size=64,
+    batch_size=256,
     lr=1e-3,
 ):
     
@@ -52,48 +54,61 @@ def train(
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     # model + optimizer
-    model = ChessNet().to(device)
+    if(base_model_path is None):
+        model = ChessNet().to(device)
+        print("[Train] Initialized new model.")
+    else:
+        model = ChessNet().to(device)
+        model.load_state_dict(torch.load(base_model_path, map_location=device))
+        print(f"[Train] Loaded model from {base_model_path}.")
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs * len(dataloader))
     # Loss function: policy loss + value loss
     mse_loss = nn.MSELoss()
     ce_loss = nn.CrossEntropyLoss()
 
+    scaler = GradScaler(enabled=(device.type == 'cuda'))
+    global_step = 0
     for epoch in range(epochs):
         model.train()
-        total_loss = 0
-
+        
         for states, target_policies, target_values in dataloader:
             states = states.to(device)
             target_policies = target_policies.to(device)
             target_values = target_values.to(device)
 
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True) # Use set_to_none=True for better performance
 
-            # Forward
-            policy_logits, values = model(states)
+            # Use autocast for the forward pass
+            with autocast(device_type="cuda",enabled=(device.type == 'cuda')):
+                policy_logits, values = model(states)
 
-            # Policy loss
-            policy_loss = -(target_policies * torch.log_softmax(policy_logits, dim=1)).sum(dim=1).mean()
+                # Policy loss (cross-entropy for soft labels)
+                policy_loss = -(target_policies * torch.log_softmax(policy_logits, dim=1)).sum(dim=1).mean()
 
-            # Value loss (MSE)
-            value_loss = mse_loss(values.squeeze(), target_values)
+                # Value loss (MSE)
+                value_loss = mse_loss(values.squeeze(-1), target_values)
 
-            # Total loss
-            loss = policy_loss + value_loss
+                # Total loss
+                loss = policy_loss + value_loss
 
-            # Backpropagation
-            loss.backward()
-            optimizer.step()
+            # Backpropagation with scaler
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            
             scheduler.step()
-            total_loss += loss.item()
 
-            # Logging
-            writer.add_scalar("Loss/Total", total_loss, epoch)
-            writer.add_scalar("Loss/Policy", policy_loss, epoch)
-            writer.add_scalar("Loss/Value", value_loss, epoch)
-        avg_loss = total_loss / len(dataloader)
-        print(f"[Epoch {epoch+1}/{epochs}] Loss = {avg_loss:.4f}")
+            
+            if global_step % 50 == 0: # Log every 50 steps
+                writer.add_scalar("Loss/Total", loss.item(), global_step)
+                writer.add_scalar("Loss/Policy", policy_loss.item(), global_step)
+                writer.add_scalar("Loss/Value", value_loss.item(), global_step)
+                writer.add_scalar("LearningRate", scheduler.get_last_lr()[0], global_step)
+            
+            global_step += 1
+
+        print(f"[Epoch {epoch+1}/{epochs}] Last Batch Loss = {loss.item():.4f}")
 
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
     torch.save(model.state_dict(), model_path)
@@ -106,6 +121,7 @@ if __name__ == "__main__":
     train(
         replay_buffer_path="replay_buffer.pkl.gz",
         model_path="checkpoints/chess_model_testing.pth",
+        base_model_path="checkpoints/chess_model_old.pth",
         epochs=10,
         batch_size=64,
         lr=1e-3,
