@@ -9,7 +9,7 @@ from src.game.chess_game import ChessGame
 from src.mcts.mcts import MCTS
 from src.mcts.mcts_action_indexer import UCIActionIndexer
 from src.network.model import NeuralNet
-from src.selfplay import choose_move
+from src.selfplay.choose_move import choose_move
 
 app = FastAPI(title="Chess Move API", version="4.0")
 
