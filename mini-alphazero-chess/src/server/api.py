@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.middleware.cors import CORSMiddleware
 import torch
 import chess
 import numpy as np
@@ -12,6 +13,13 @@ from src.network.model import NeuralNet
 from src.selfplay.choose_move import choose_move
 
 app = FastAPI(title="Chess Move API", version="4.0")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://127.0.0.1:5500"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class FenRequest(BaseModel):
     fen: str
@@ -83,3 +91,4 @@ def get_move(request: FenRequest):
 @app.get("/")
 def root():
     return {"message": "Chess Move API v4 is running", "device": device}
+
