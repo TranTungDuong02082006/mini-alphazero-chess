@@ -31,7 +31,9 @@ print(f"Using device: {device}")
 
 # --- Initialize NN + MCTS once ---
 model = NeuralNet(device=device)
-# TODO: load checkpoint weights nếu có
+checkpoint_path = "checkpoints/best.pth"
+model.load(checkpoint_path)
+print(f"Loaded checkpoint from {checkpoint_path}")
 action_indexer = UCIActionIndexer()
 mcts = MCTS(network=model, action_indexer=action_indexer, num_simulations=800, c_puct=1.0)
 
