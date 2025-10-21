@@ -14,13 +14,34 @@ A **mini AlphaZero-like chess engine** that combines **Monte Carlo Tree Search (
 > *"Learning to play chess from scratch — guided by the power of search and self-play."*
 
 ## Table of Contents
-* [Usage](#usage)
-* [Project Structure](#project-structure)
-* [Design & Architecture](#design--architecture)
-* [Training Pipeline](#training-pipeline)
-* [Evaluation & Matchmaking](#evaluation--matchmaking)
-* [Results & Benchmarks](#results--benchmarks)
-* [References](#references)
+- [Usage](#usage)
+- [Project Structure](#project-structure)
+- [Design & Architecture](#design--architecture)
+  - [1. Neural Network](#1-neural-network)
+  - [2. Monte Carlo Tree Search](#2-monte-carlo-tree-search)
+  - [3. Self-Play Loop](#3-self-play-loop)
+- [Training Pipeline](#training-pipeline)
+  - [1. Self-Play](#1-self-play)
+  - [2. Replay Buffer](#2-replay-buffer)
+  - [3. Neural Network Training](#3-neural-network-training)
+  - [4. Evaluation](#4-evaluation)
+  - [5. Key Training Files](#5-key-training-files)
+- [Evaluation & Matchmaking](#evaluation--matchmaking)
+  - [1. Matchmaking Protocol](#1-matchmaking-protocol)
+  - [2. Win Rate Calculation](#2-win-rate-calculation)
+  - [3. Evaluation Strategy](#3-evaluation-strategy)
+  - [4. Configuration Parameters](#4-configuration-parameters)
+- [Results & Benchmarks](#results--benchmarks)
+  - [1. Experimental Setup](#1-experimental-setup)
+  - [2. Performance Metrics](#2-performance-metrics)
+  - [3. Model Quality Evaluation](#3-model-quality-evaluation)
+  - [4. Game Insights](#4-game-insights)
+  - [5. Visualization](#5-visualization)
+  - [6. Final Evaluation Summary](#6-final-evaluation-summary)
+  - [7. Key Observations](#7-key-observations)
+- [References](#references)
+  - [Core Research Papers](#core-research-papers)
+  - [Open-Source Implementations](#open-source-implementations)
 
 ## Usage
 
@@ -84,9 +105,7 @@ The mini AlphaZero Chess Bot combines **Monte Carlo Tree Search (MCTS)** and a *
 
 ---
 
-### Core Components
-
-#### 1. Neural Network (Policy + Value Network)
+### 1. Neural Network
 - Implemented in **PyTorch**
 - Takes the **board state** as input (encoded as planes of pieces, turn, castling rights, etc.)
 - Outputs:
@@ -94,7 +113,7 @@ The mini AlphaZero Chess Bot combines **Monte Carlo Tree Search (MCTS)** and a *
   - **Value scalar (v)** → expected game outcome (+1 win, 0 draw, -1 loss)
 - This network replaces random rollouts in classical MCTS, making the search guided and efficient.
 
-#### 2. Monte Carlo Tree Search (MCTS)
+### 2. Monte Carlo Tree Search
 - Each node represents a **board state**.
 - Each edge stores:
   - Visit count (N)
@@ -108,7 +127,7 @@ The mini AlphaZero Chess Bot combines **Monte Carlo Tree Search (MCTS)** and a *
 
 - At each move, the NN provides priors for unexplored nodes and values for backpropagation.
 
-#### 3. Self-Play Loop
+### 3. Self-Play Loop
 - The bot plays games **against itself** using the MCTS policy.
 - Each position encountered during self-play is stored as:
 ```
