@@ -1,25 +1,24 @@
 import numpy as np
 import os
-import time # Import the time library
+import time
 from typing import List, Tuple
-import chess # Move import to the top of the file
+import chess
 
 from src.game.chess_game import ChessGame
 from src.mcts.mcts import MCTS
 from src.utils.replay_buffer import ReplayBuffer
-from src.network.model import NeuralNet # Add import
-from src.mcts.mcts_action_indexer import UCIActionIndexer # Add import
-def self_play_worker(model_path, data_queue, worker_id, args):
+from src.network.model import NeuralNet
+from src.mcts.mcts_action_indexer import UCIActionIndexer
+
+# The worker function now accepts the shared 'model_version' flag
+def self_play_worker(model_path, data_queue, worker_id, args, model_version):
     """
-    A worker process that continuously plays games and puts the data into a queue.
+    A worker process that intelligently reloads the model only when it has been updated.
     """
-    print(f"[Worker {worker_id}] Started.")
+    print(f"[Worker {worker_id}] Started. Will load model from '{model_path}'.")
     
-    # Workers should generally run on CPU to not interfere with the main training GPU
-    # and because the MCTS tree logic is CPU-bound.
     device = "cpu"
-    # Each worker will load the model on its own
-    model = NeuralNet(model_path=model_path, device=device)
+    model = NeuralNet(device=device)
     action_indexer = UCIActionIndexer()
 
     mcts = MCTS(
@@ -28,25 +27,31 @@ def self_play_worker(model_path, data_queue, worker_id, args):
         num_simulations=args.sims,
         c_puct=args.c_puct,
     )
-
-    # The worker doesn't need a buffer, it just needs the logic to play one game
     self_player = SelfPlay(mcts=mcts, buffer=None, action_indexer=action_indexer)
 
+    # Local variable to track the currently loaded model version
+    local_model_version = -1 
+
     while True:
-        try:
-            # Reload the latest model from the file
-            model.load(model_path)
-        except Exception as e:
-            print(f"[Worker {worker_id}] Could not load model, waiting... Error: {e}")
-            time.sleep(10)
-            continue
+        # Check if the shared model version has been incremented
+        with model_version.get_lock():
+            shared_version = model_version.value
+
+        if local_model_version < shared_version:
+            try:
+                print(f"[Worker {worker_id}] Detected new model version {shared_version}. Loading...")
+                model.load(model_path)
+                local_model_version = shared_version # Update local version
+                print(f"[Worker {worker_id}] Model version {local_model_version} loaded successfully.")
+            except Exception as e:
+                print(f"[Worker {worker_id}] CRITICAL: Could not load model, waiting... Error: {e}")
+                time.sleep(20) # Wait longer on critical error
+                continue
         
-        # Play one game
+        # Play one game with the current model
         game_data = self_player.play_game(max_moves=args.max_moves)
         
-        # Put the data into the queue for the main process to handle
         if game_data:
-            print(f"[Worker {worker_id}] Game finished ({len(game_data)} moves). Sending to main.")
             data_queue.put(game_data)
 
 class SelfPlay:

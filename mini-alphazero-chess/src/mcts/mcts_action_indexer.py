@@ -31,12 +31,13 @@ class UCIActionIndexer:
         build_action_maps()
         print(adapter.ACTION_SPACE_SIZE)
         actions = []
-        for m in ALL_ACTION_SLOTS:
+        for m in ALL_ACTION_SLOTS: #
             if isinstance(m, chess.Move):
                 actions.append(m.uci())
             else:
-                # if adapter stores UCI strings already
-                actions.append(str(m))
+                # Nếu m là None, hãy thêm một chuỗi giữ chỗ duy nhất
+                # mà không bao giờ là một nước đi UCI hợp lệ
+                actions.append(f"__INVALID_SLOT_{len(actions)}__")
 
         # ensure length matches adapter constant if present
         if hasattr(adapter, 'ACTION_SPACE_SIZE'):
