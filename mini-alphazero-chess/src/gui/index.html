@@ -4,80 +4,139 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mini AlphaZero Chess</title>
-
-    <!-- Chessboard CSS -->
+    <title>Mini AlphaZero Chess</title> <!-- Chessboard CSS -->
     <link rel="stylesheet" href="chessboardjs/css/chessboard-1.0.0.min.css" />
-
     <style>
         body {
             display: flex;
-            flex-direction: column;
-            align-items: center;
             justify-content: center;
-            background: #f0f0f0;
-            height: 100vh;
-            margin: 0;
-            font-family: sans-serif;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-            color: #333;
+            align-items: flex-start;
+            background: #1e1e1e;
+            color: #fce9ec;
+            font-family: "Segoe UI", sans-serif;
+            gap: 40px;
+            margin-top: 30px;
         }
 
         #board {
-            width: 500px;
-            margin-bottom: 15px;
+            width: 440px;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .clock {
+            font-size: 1.4em;
+            font-weight: bold;
+            background: #2e2e2e;
+            padding: 8px 18px;
+            border-radius: 10px;
+            width: 180px;
+            text-align: center;
+        }
+
+        .captured {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #2b2b2b;
+            border-radius: 6px;
+            padding: 4px;
+            gap: 3px;
+            width: 180px;
+            min-height: 28px;
+        }
+
+        .captured img {
+            width: 20px;
+            height: 20px;
         }
 
         #status {
-            margin-top: 10px;
-            font-size: 18px;
-            color: #444;
+            font-size: 1em;
+            text-align: center;
+            margin-top: 6px;
         }
 
-        button {
-            padding: 8px 16px;
+        .right-panel {
+            width: 260px;
+            background: #2e2e2e;
+            border-radius: 8px;
+            overflow: hidden;
+            padding: 10px;
+            height: fit-content;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.9em;
+            color: #fce9ec;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid #444;
+            padding: 4px 6px;
+            text-align: center;
+        }
+
+        th {
+            background: #3a3a3a;
+            font-weight: 600;
+        }
+
+        #resetBtn {
+            padding: 6px 14px;
+            background: #9a001a;
             border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            background: #4a90e2;
-            color: white;
+            border-radius: 5px;
+            color: #fce9ec;
             font-weight: bold;
-            transition: background 0.3s ease;
+            cursor: pointer;
         }
 
-        button:hover {
-            background: #357ab7;
+        #resetBtn:hover {
+            background: #fce9ec;
+            color: black;
         }
+
     </style>
 </head>
 
 <body>
-    <h1>Mini AlphaZero Chess</h1>
-    <div style="display: flex; align-items: center;">
-        <div id="capturedBlack" style="width: 80px; min-height: 100px; text-align: center;"></div>
-    
+    <div class="main-panel">
+        <div class="clock" id="blackClock">03:00</div>
+        <div id="capturedWhite" class="captured"></div>
         <div id="board"></div>
-    
-        <div id="capturedWhite" style="width: 80px; min-height: 100px; text-align: center;"></div>
-    </div>
-    <div id="board"></div>
-    <div id="status">Your move...</div>
-    <button id="resetBtn">Reset</button>
-
-    <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-
-    <!-- Chessboard.js -->
-    <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script>
-
-    <!-- Chess.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-
-    <!-- Custom Script -->
+        
+        <div id="capturedBlack" class="captured"></div>
+        <div class="clock" id="whiteClock">03:00</div>
+        
+        <div id="status"></div>
+        <button id="resetBtn">Reset</button></div>
+    <div class="right-panel">
+        <table id="moveHistory">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>White</th>
+                    <th>t</th>
+                    <th>Black</th>
+                    <th>t</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div> <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> <!-- Chessboard.js -->
+    <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script> <!-- Chess.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script> <!-- Custom Script -->
     <script src="script.js"></script>
 </body>
-
+        
 </html>
