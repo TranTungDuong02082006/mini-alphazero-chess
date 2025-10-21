@@ -2,7 +2,6 @@
 
 A **mini AlphaZero-like chess engine** that combines **Monte Carlo Tree Search (MCTS)** with a **Neural Network** for guided rollouts — replacing random playouts with learned policy and value predictions.
 
-![Build](https://img.shields.io/github/actions/workflow/status/TranTungDuong02082006/mini-alphazero-chess/ci.yml?style=flat-square&label=build)
 ![Python](https://img.shields.io/badge/python-3.8%2B-blue?style=flat-square&logo=python)
 ![Stars](https://img.shields.io/github/stars/TranTungDuong02082006/mini-alphazero-chess?style=flat-square)
 ![Last Commit](https://img.shields.io/github/last-commit/TranTungDuong02082006/mini-alphazero-chess?style=flat-square)
