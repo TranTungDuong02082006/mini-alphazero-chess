@@ -41,9 +41,9 @@ A **mini AlphaZero-like chess engine** that combines **Monte Carlo Tree Search (
 - [References](#references)
   - [Core Research Papers](#core-research-papers)
   - [Open-Source Implementations](#open-source-implementations)
-
+---
 ## Usage
-
+---
 ## Project Structure
 
 The project follows a modular architecture inspired by the original **AlphaZero** framework, separating logic for game simulation, MCTS search, neural network training, and deployment.
@@ -97,12 +97,10 @@ mini-alphazero-chess/
 │
 └── requirements.txt # Python dependencies
 ```
-
+---
 ## Design & Architecture
 
 The mini AlphaZero Chess Bot combines **Monte Carlo Tree Search (MCTS)** and a **Neural Network (NN)** in a self-reinforcing training loop. The architecture mirrors DeepMind’s AlphaZero but is simplified for educational and experimental use.
-
----
 
 ### 1. Neural Network
 - Implemented in **PyTorch**
@@ -134,11 +132,11 @@ The mini AlphaZero Chess Bot combines **Monte Carlo Tree Search (MCTS)** and a *
 ```
 - This data populates the **Replay Buffer**, later used for supervised-like training.
 
+---
 ## Training Pipeline
 
 The training pipeline of **Mini AlphaZero Chess** follows the self-play reinforcement learning cycle inspired by DeepMind’s AlphaZero. It alternates between three major stages: **Self-Play**, **Training**, and **Evaluation**.
 
----
 
 ### 1. Self-Play
 - The current neural network model plays multiple games **against itself** using the **MCTS** policy.
@@ -184,11 +182,10 @@ The training pipeline of **Mini AlphaZero Chess** follows the self-play reinforc
 | `src/utils/replay_buffer.py` | Handles experience replay. |
 | `checkpoints/` | Stores trained model weights (`.pth`). |
 
+---
 ## Evaluation & Matchmaking
 
 The **Evaluation and Matchmaking** phase is used to measure the improvement of the neural network after each training iteration. This process ensures that only models that truly outperform previous versions are promoted as the **current best model**.
-
----
 
 ### 1. Matchmaking Protocol
 After each training iteration:
@@ -241,12 +238,11 @@ If this win rate **exceeds a threshold** (commonly 55%), the candidate replaces 
 | `temperature_eval` | Exploration factor during evaluation | 0.1 |
 | `use_symmetry` | Whether to play both sides per matchup | True |
 
+---
 ## Results & Benchmarks
 
 This section summarizes quantitative and qualitative results obtained from training and evaluation runs of the Mini AlphaZero Chess Bot.  
 All experiments were conducted under controlled hardware and configuration settings for reproducibility.
-
----
 
 ### 1. Experimental Setup
 
@@ -313,11 +309,10 @@ The model was benchmarked using 200 evaluation matches per checkpoint.
 - Diminishing returns observed after ~25 iterations; performance plateaus without architecture scaling.  
 - Replay buffer diversity strongly correlates with final Elo.
 
+---
 ## References
 
 This project is directly inspired by the foundational research behind **AlphaZero** and modern self-play reinforcement learning systems for chess.
-
----
 
 ### Core Research Papers
 
