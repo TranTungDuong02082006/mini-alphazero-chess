@@ -43,6 +43,18 @@ A **mini AlphaZero-like chess engine** that combines **Monte Carlo Tree Search (
   - [Open-Source Implementations](#open-source-implementations)
 ---
 ## Usage
+
+To run the Mini AlphaZero Chess project:
+
+1. **Start the API server**  
+   Open your terminal and run:
+   ```bash
+   uvicorn src.server.api:app --reload
+   
+2. **Open the game interface**
+
+   Once the server is running, open the file `index.html` in your web browser. You can now play chess against the mini AlphaZero bot.
+
 ---
 ## Project Structure
 
