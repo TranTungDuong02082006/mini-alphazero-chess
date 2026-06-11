@@ -1,5 +1,20 @@
 # Mini-AlphaZero-Chess
 
+<p align="center">
+  <img src="logo_minialphazerochess_engine.png" alt="Mini AlphaZero Chess Logo" width="1100" />
+  <br>
+  <b>A Deep Reinforcement Learning Chess Engine & Interactive Dashboard</b>
+  <br>
+  <i>Guided by Monte Carlo Tree Search (MCTS) & Policy-Value ResNet</i>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8%2B-blue?style=flat-square&logo=python" alt="Python" />
+  <img src="https://img.shields.io/badge/PyTorch-2.0%2B-ee4c2c?style=flat-square&logo=pytorch" alt="PyTorch" />
+  <img src="https://img.shields.io/badge/FastAPI-0.100%2B-009688?style=flat-square&logo=fastapi" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="License" />
+</p>
+
 A compact, high-performance **AlphaZero-like chess engine** that combines **Monte Carlo Tree Search (MCTS)** with a **Policy-Value Neural Network** for guided rollouts. This project replaces classical random playouts with learned policy and value predictions, offering a self-reinforcing reinforcement learning cycle.
 
 It features a **premium web-based GUI dashboard** that displays real-time MCTS statistics, AI evaluation, captured piece arrays, and interactive gameplay configs.
