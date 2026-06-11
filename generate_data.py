@@ -14,12 +14,12 @@ from functools import partial # Dùng để truyền tham số cố định cho 
 from typing import List, Tuple, Optional, Dict, Any
 
 # --- Import các thành phần cốt lõi từ dự án của bạn ---
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 try:
-    from utils.replay_buffer import ReplayBuffer #
-    from game.chess_game import ChessGame #
-    from mcts.mcts_action_indexer import UCIActionIndexer #
-    from utils.adapter import build_action_maps
+    from src.utils.replay_buffer import ReplayBuffer
+    from src.game.chess_game import ChessGame
+    from src.mcts.mcts_action_indexer import UCIActionIndexer
+    from src.utils.adapter import build_action_maps
 except ImportError as e:
     print(f"LỖI NGHIÊM TRỌNG: Không thể import các module cần thiết từ 'src'. Lỗi: {e}")
     sys.exit(1)
