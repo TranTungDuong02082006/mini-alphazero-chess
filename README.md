@@ -13,10 +13,6 @@ It features a **premium web-based GUI dashboard** that displays real-time MCTS s
 
 <p align="center">
   <img src="logo_minialphazerochess_engine.png" alt="Mini AlphaZero Chess Logo" width="1100" />
-  <br>
-  <b>A Deep Reinforcement Learning Chess Engine & Interactive Dashboard</b>
-  <br>
-  <i>Guided by Monte Carlo Tree Search (MCTS) & Policy-Value ResNet</i>
 </p>
 
 
