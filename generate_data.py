@@ -311,7 +311,7 @@ if __name__ == "__main__":
     # CẬP NHẬT ĐƯỜNG DẪN TỚI FILE PGN LỚN BẠN ĐÃ TẢI VỀ
     PGN_FILE_PATH = r"GameDatabase/lichess_elite_2022-02/lichess_elite_2022-02.pgn"
     # Nơi lưu trữ dataset đầu ra
-    OUTPUT_BUFFER_PATH = "StockfishDataset/stockfish_dataset_gen0.pkl.gz"
+    OUTPUT_BUFFER_PATH = "Dataset/stockfish_dataset_gen0.pkl.gz"
     # Số lượng ván cờ cần xử lý từ file PGN
     GAMES_TO_PROCESS = 5000
     # Độ sâu Stockfish phân tích

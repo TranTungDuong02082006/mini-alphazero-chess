@@ -34,7 +34,7 @@ class ChessDataset(Dataset):
 # Training Loop
 # -------------------------------
 def train(
-    replay_buffer_path="StockfishDataset/stockfish_dataset_gen0.pkl.gz",
+    replay_buffer_path="Dataset/stockfish_dataset_gen0.pkl.gz",
     model_path="checkpoints/candidate.pth",
     base_model_path="checkpoints/best.pth",
     epochs=15,
