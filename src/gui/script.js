@@ -36,6 +36,8 @@ function setupEventListeners() {
       humanName = "Human (White)";
       document.getElementById("whitePlayerName").textContent = humanName;
       document.getElementById("blackPlayerName").textContent = botName;
+      document.getElementById("whitePlayerIcon").className = "fa-solid fa-user";
+      document.getElementById("blackPlayerIcon").className = "fa-solid fa-robot";
       board.orientation("white");
     } else {
       humanColor = "b";
@@ -43,6 +45,8 @@ function setupEventListeners() {
       humanName = "Human (Black)";
       document.getElementById("whitePlayerName").textContent = botName;
       document.getElementById("blackPlayerName").textContent = humanName;
+      document.getElementById("whitePlayerIcon").className = "fa-solid fa-robot";
+      document.getElementById("blackPlayerIcon").className = "fa-solid fa-user";
       board.orientation("black");
     }
     resetGame();

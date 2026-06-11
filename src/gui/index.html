@@ -5,6 +5,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlphaZero Chess Dashboard</title>
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2345f3ff'/%3E%3Cstop offset='100%25' stop-color='%2300d2ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='100' height='100' rx='20' fill='%230b0c10'/%3E%3Crect width='90' height='90' x='5' y='5' rx='15' fill='none' stroke='url(%23g)' stroke-width='4' opacity='0.8'/%3E%3Ctext x='50' y='72' font-family='sans-serif' font-size='60' font-weight='bold' fill='url(%23g)' text-anchor='middle'%3E♞%3C/text%3E%3C/svg%3E">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
     <!-- Chessboard CSS -->
@@ -494,7 +498,7 @@
         <!-- Right Section: Sidebar Dashboard -->
         <div class="sidebar-section">
             <div class="header-panel">
-                <h1>AlphaZero Chess</h1>
+                <h1><i class="fa-solid fa-chess-knight" style="color: var(--primary-glow); margin-right: 12px;"></i>AlphaZero Chess</h1>
                 <p>MCTS-guided Policy Value Neural Network</p>
             </div>
 
@@ -503,7 +507,10 @@
                 <!-- Black Player -->
                 <div class="player-row" id="blackPlayerRow">
                     <div class="player-info">
-                        <span class="player-name" id="blackPlayerName">AlphaZero (Black)</span>
+                        <span class="player-name">
+                            <i class="fa-solid fa-robot" id="blackPlayerIcon" style="margin-right: 8px; color: var(--primary-glow);"></i>
+                            <span id="blackPlayerName">AlphaZero (Black)</span>
+                        </span>
                         <div class="captured-pieces" id="capturedWhite"></div>
                     </div>
                     <div class="time-box" id="blackClock">03:00</div>
@@ -512,7 +519,10 @@
                 <!-- White Player -->
                 <div class="player-row active" id="whitePlayerRow">
                     <div class="player-info">
-                        <span class="player-name" id="whitePlayerName">Human (White)</span>
+                        <span class="player-name">
+                            <i class="fa-solid fa-user" id="whitePlayerIcon" style="margin-right: 8px; color: var(--primary-glow);"></i>
+                            <span id="whitePlayerName">Human (White)</span>
+                        </span>
                         <div class="captured-pieces" id="capturedBlack"></div>
                     </div>
                     <div class="time-box" id="whiteClock">03:00</div>
@@ -521,7 +531,9 @@
 
             <!-- Controls Card -->
             <div class="glass-card">
-                <div class="glass-card-title">Match Settings</div>
+                <div class="glass-card-title">
+                    <span><i class="fa-solid fa-sliders" style="margin-right: 8px; color: var(--primary-glow);"></i>Match Settings</span>
+                </div>
                 <div class="controls-row">
                     <div class="control-group">
                         <label class="control-label" for="playerSide">Play As</label>
@@ -539,13 +551,17 @@
                     </div>
                 </div>
                 <div class="btn-container">
-                    <button class="btn-danger" id="resetBtn">Reset Board</button>
+                    <button class="btn-danger" id="resetBtn">
+                        <i class="fa-solid fa-rotate-left" style="margin-right: 8px;"></i>Reset Board
+                    </button>
                 </div>
             </div>
 
             <!-- AI Thought Process Card -->
             <div class="glass-card">
-                <div class="glass-card-title">AI Engine Thoughts</div>
+                <div class="glass-card-title">
+                    <span><i class="fa-solid fa-brain" style="margin-right: 8px; color: var(--primary-glow);"></i>AI Engine Thoughts</span>
+                </div>
                 <div class="eval-prediction">
                     <span>Position Eval:</span>
                     <span id="posEvalPrediction">0.00 (Equal)</span>
@@ -557,7 +573,9 @@
 
             <!-- Move History Card -->
             <div class="glass-card" style="flex: 1; min-height: 120px;">
-                <div class="glass-card-title">Move History</div>
+                <div class="glass-card-title">
+                    <span><i class="fa-solid fa-clock-rotate-left" style="margin-right: 8px; color: var(--primary-glow);"></i>Move History</span>
+                </div>
                 <div class="history-table-container">
                     <table id="moveHistory">
                         <thead>
