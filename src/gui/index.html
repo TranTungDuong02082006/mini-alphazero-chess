@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlphaZero Chess Dashboard</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <!-- Chessboard CSS -->
+    <link rel="stylesheet" href="chessboardjs/css/chessboard-1.0.0.min.css" />
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --panel-bg: rgba(31, 40, 51, 0.45);
+            --border-glow: rgba(102, 252, 241, 0.15);
+            --primary-glow: #66fcf1;
+            --secondary-glow: #45f3ff;
+            --text-main: #f5f5f7;
+            --text-muted: #8b9bb4;
+            --accent-red: #ff3366;
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: radial-gradient(circle at top right, #1f2833 0%, #0b0c10 80%);
+            color: var(--text-main);
+            font-family: "Outfit", sans-serif;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .dashboard-container {
+            display: flex;
+            background: rgba(11, 12, 16, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow: var(--glass-shadow);
+            padding: 30px;
+            gap: 40px;
+            max-width: 1200px;
+            width: 100%;
+            align-items: stretch;
+        }
+
+        /* --- Chessboard & Eval Section --- */
+        .board-section {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            position: relative;
+        }
+
+        /* Vertical Evaluation Bar */
+        .eval-bar-container {
+            width: 20px;
+            height: 480px;
+            background: #2b2b2b;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.5), 0 0 10px rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .eval-bar-fill {
+            width: 100%;
+            height: 50%; /* Starts at 50% (0.00 score) */
+            background: linear-gradient(to bottom, #ffffff 0%, #dcdcdc 100%);
+            position: absolute;
+            bottom: 0;
+            transition: height 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+        }
+
+        .eval-bar-marker {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-red);
+            z-index: 10;
+            opacity: 0.7;
+        }
+
+        .eval-score-label {
+            position: absolute;
+            left: 28px;
+            font-size: 0.8em;
+            font-weight: 600;
+            color: var(--text-muted);
+            background: rgba(11, 12, 16, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .board-wrapper {
+            position: relative;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-glow);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 0 20px rgba(102, 252, 241, 0.05);
+        }
+
+        #board {
+            width: 480px;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* --- Sidebar & Panels --- */
+        .sidebar-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 450px;
+        }
+
+        /* Header block */
+        .header-panel {
+            text-align: left;
+        }
+
+        .header-panel h1 {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(45deg, var(--primary-glow), var(--secondary-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .header-panel p {
+            color: var(--text-muted);
+            margin: 5px 0 0 0;
+            font-size: 0.95em;
+            font-weight: 300;
+        }
+
+        /* Custom widgets */
+        .glass-card {
+            background: var(--panel-bg);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .glass-card-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--primary-glow);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Clocks & Captured widgets */
+        .players-widget {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .player-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-radius: 12px;
+            background: rgba(11, 12, 16, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: all 0.3s ease;
+        }
+
+        .player-row.active {
+            border-color: var(--primary-glow);
+            box-shadow: 0 0 12px rgba(102, 252, 241, 0.15);
+            background: rgba(102, 252, 241, 0.04);
+        }
+
+        .player-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .player-name {
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .captured-pieces {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            min-height: 20px;
+            max-width: 220px;
+        }
+
+        .captured-pieces img {
+            width: 18px;
+            height: 18px;
+            opacity: 0.85;
+        }
+
+        .time-box {
+            font-family: monospace;
+            font-size: 1.5em;
+            font-weight: 700;
+            color: var(--text-main);
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px 12px;
+            border-radius: 8px;
+            min-width: 80px;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .player-row.active .time-box {
+            color: var(--primary-glow);
+            text-shadow: 0 0 5px rgba(102, 252, 241, 0.5);
+        }
+
+        /* Controls Widget */
+        .controls-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .control-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .control-label {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        select {
+            background: #0b0c10;
+            color: var(--text-main);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9em;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            border-color: var(--primary-glow);
+        }
+
+        .btn-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px 16px;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.95em;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #45f3ff, #00d2ff);
+            color: #0b0c10;
+            box-shadow: 0 0 10px rgba(69, 243, 255, 0.2);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 18px rgba(69, 243, 255, 0.55);
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: rgba(255, 51, 102, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 51, 102, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: var(--accent-red);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(255, 51, 102, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* AI Thought Widget */
+        .thought-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .thought-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+
+        .thought-move {
+            font-family: monospace;
+            font-weight: 700;
+            color: var(--primary-glow);
+            width: 60px;
+        }
+
+        .thought-bar-outer {
+            flex: 1;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .thought-bar-inner {
+            height: 100%;
+            background: linear-gradient(to right, #66fcf1, #45f3ff);
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.25, 0.8, 0.25, 1);
+            border-radius: 6px;
+        }
+
+        .thought-value {
+            font-size: 0.85em;
+            color: var(--text-muted);
+            width: 90px;
+            text-align: right;
+        }
+
+        .eval-prediction {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .no-data-msg {
+            color: var(--text-muted);
+            font-style: italic;
+            text-align: center;
+            padding: 10px 0;
+            font-size: 0.9em;
+        }
+
+        /* Move History Widget */
+        .history-table-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.85em;
+            color: var(--text-main);
+        }
+
+        th, td {
+            padding: 6px 10px;
+            text-align: center;
+        }
+
+        th {
+            background: rgba(11, 12, 16, 0.8);
+            font-weight: 600;
+            color: var(--text-muted);
+            position: sticky;
+            top: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-transform: uppercase;
+            font-size: 0.75em;
+            letter-spacing: 0.8px;
+        }
+
+        tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        tr:hover {
+            background: rgba(102, 252, 241, 0.04);
+        }
+
+        td.active-move {
+            color: var(--primary-glow);
+            font-weight: 600;
+        }
+
+        /* Scrollbar customizing */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Game Status Block */
+        .status-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(11, 12, 16, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            font-size: 0.95em;
+            font-weight: 500;
+            min-height: 22px;
+        }
+
+        .status-active {
+            color: var(--primary-glow);
+            text-shadow: 0 0 5px rgba(102, 252, 241, 0.2);
+        }
+
+        .status-alert {
+            color: var(--accent-red);
+            text-shadow: 0 0 5px rgba(255, 51, 102, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <!-- Left Section: Eval + Board -->
+        <div class="board-section">
+            <div class="eval-bar-container">
+                <div class="eval-bar-fill" id="evalFill"></div>
+                <div class="eval-bar-marker"></div>
+                <div class="eval-score-label" id="evalLabel">0.00</div>
+            </div>
+            
+            <div class="board-wrapper">
+                <div id="board"></div>
+            </div>
+        </div>
+
+        <!-- Right Section: Sidebar Dashboard -->
+        <div class="sidebar-section">
+            <div class="header-panel">
+                <h1>AlphaZero Chess</h1>
+                <p>MCTS-guided Policy Value Neural Network</p>
+            </div>
+
+            <!-- Clocks & Captured widgets -->
+            <div class="glass-card players-widget">
+                <!-- Black Player -->
+                <div class="player-row" id="blackPlayerRow">
+                    <div class="player-info">
+                        <span class="player-name" id="blackPlayerName">AlphaZero (Black)</span>
+                        <div class="captured-pieces" id="capturedWhite"></div>
+                    </div>
+                    <div class="time-box" id="blackClock">03:00</div>
+                </div>
+
+                <!-- White Player -->
+                <div class="player-row active" id="whitePlayerRow">
+                    <div class="player-info">
+                        <span class="player-name" id="whitePlayerName">Human (White)</span>
+                        <div class="captured-pieces" id="capturedBlack"></div>
+                    </div>
+                    <div class="time-box" id="whiteClock">03:00</div>
+                </div>
+            </div>
+
+            <!-- Controls Card -->
+            <div class="glass-card">
+                <div class="glass-card-title">Match Settings</div>
+                <div class="controls-row">
+                    <div class="control-group">
+                        <label class="control-label" for="playerSide">Play As</label>
+                        <select id="playerSide">
+                            <option value="white">White (Human vs Bot)</option>
+                            <option value="black">Black (Bot vs Human)</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="engineMethod">Engine Logic</label>
+                        <select id="engineMethod">
+                            <option value="best">Best Move (MCTS+NN)</option>
+                            <option value="random">Random (Fallback)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="btn-container">
+                    <button class="btn-danger" id="resetBtn">Reset Board</button>
+                </div>
+            </div>
+
+            <!-- AI Thought Process Card -->
+            <div class="glass-card">
+                <div class="glass-card-title">AI Engine Thoughts</div>
+                <div class="eval-prediction">
+                    <span>Position Eval:</span>
+                    <span id="posEvalPrediction">0.00 (Equal)</span>
+                </div>
+                <div class="thought-list" id="thoughtList">
+                    <div class="no-data-msg" id="noThoughtMsg">Make a move to see AI analysis...</div>
+                </div>
+            </div>
+
+            <!-- Move History Card -->
+            <div class="glass-card" style="flex: 1; min-height: 120px;">
+                <div class="glass-card-title">Move History</div>
+                <div class="history-table-container">
+                    <table id="moveHistory">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>White</th>
+                                <th>t</th>
+                                <th>Black</th>
+                                <th>t</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- System status message -->
+            <div class="status-container" id="status">
+                White to move
+            </div>
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Chessboard.js -->
+    <script src="chessboardjs/js/chessboard-1.0.0.min.js"></script>
+    <!-- Chess.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Custom Script -->
+    <script src="script.js"></script>
+</body>
+
+</html>
